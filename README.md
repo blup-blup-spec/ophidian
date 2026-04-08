@@ -24,8 +24,14 @@
 | ARM NEON | partial | **full (XNNPACK)** |
 | Build needed? | C++ compile on Pi (~10 min) | **No build needed!** |
 
-## Dataset
-**[aishanikaggle/indian-snake](https://www.kaggle.com/datasets/aishanikaggle/indian-snake)** — ~3,000 images
+## Dataset & Training Data
+Our model is trained on a highly diverse, custom-curated dataset combining open-source data and proprietary field captures:
+
+- **Kaggle Dataset**: Baseline snake images (`aishanikaggle/indian-snake`) for general feature extraction.
+- **Indian Herpetology Database**: High-quality, verified references specifically focused on the **Big Four** venomous species.
+- **Custom Field Images (Odisha Rural Terrain)**: Real-world, geographically accurate data collected from rural Odisha to train the model on local backgrounds, camouflage, and typical snake habitats.
+- **Infrared (IR) Captures**: Low-light and night-vision frames to ensure the model performs reliably even in dark/nighttime conditions.
+- **Annotation Pipeline**: All data was meticulously labeled, unified, and exported in **COCO format** using **Roboflow**, ensuring high precision for YOLO bounding box detection.
 
 ### Species Covered (15 Indian species)
 | Venomous 🔴 | Non-Venomous 🟢 |
