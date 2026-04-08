@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🐍 Snake Detector — Test</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background: #0a0a0f;
+            color: #e0e0e0;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .bg-glow {
+            position: fixed; top: -200px; left: 50%; transform: translateX(-50%);
+            width: 600px; height: 600px; border-radius: 50%;
+            background: radial-gradient(circle, rgba(139,92,246,0.15), transparent 70%);
+            pointer-events: none; z-index: 0;
+        }
+        header {
+            text-align: center; padding: 40px 20px 20px;
+            position: relative; z-index: 1;
+        }
+        header h1 {
+            font-size: 2.4em; font-weight: 800;
+            background: linear-gradient(135deg, #a78bfa, #7c3aed, #ec4899);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+        }
+        header p { color: #888; margin-top: 8px; font-size: 0.95em; }
+        .container {
+            max-width: 900px; margin: 30px auto; padding: 0 20px;
+            position: relative; z-index: 1;
+        }
+        .upload-zone {
+            border: 2px dashed #333; border-radius: 20px;
+            padding: 60px 30px; text-align: center;
+            cursor: pointer; transition: all 0.3s;
+            background: rgba(255,255,255,0.02);
+        }
+        .upload-zone:hover { border-color: #7c3aed; background: rgba(124,58,237,0.05); }
+        .upload-zone.dragover { border-color: #a78bfa; background: rgba(124,58,237,0.1); }
+        .upload-icon { font-size: 3em; margin-bottom: 15px; }
+        .upload-text { font-size: 1.1em; color: #aaa; }
+        .upload-text span { color: #a78bfa; font-weight: 600; }
+        #fileInput { display: none; }
+
+        .result-area {
+            margin-top: 30px; display: none;
+            background: rgba(255,255,255,0.03); border-radius: 20px;
+            border: 1px solid #1a1a2e; overflow: hidden;
+        }
+        .result-area.active { display: block; animation: fadeIn 0.4s ease; }
+        @keyframes fadeIn { from { opacity:0; transform:translateY(10px); } to { opacity:1; transform:translateY(0); } }
+
+        .canvas-wrap {
+            position: relative; width: 100%;
+            display: flex; justify-content: center;
+            background: #111; padding: 20px;
+        }
+        #canvas { max-width: 100%; border-radius: 8px; }
+
+        .det-list {
+            padding: 20px; border-top: 1px solid #1a1a2e;
+        }
+        .det-list h3 { font-size: 1em; color: #888; margin-bottom: 12px; }
+        .det-item {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px; border-radius: 12px;
+            margin-bottom: 8px; transition: all 0.2s;
+        }
+        .det-item:hover { transform: translateX(4px); }
+        .det-item.venomous { background: rgba(239,68,68,0.1); border-left: 4px solid #ef4444; }
+        .det-item.non_venomous { background: rgba(34,197,94,0.1); border-left: 4px solid #22c55e; }
+        .det-badge {
+            padding: 4px 10px; border-radius: 6px; font-size: 0.75em;
+            font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;
+        }
+        .venomous .det-badge { background: #ef4444; color: #fff; }
+        .non_venomous .det-badge { background: #22c55e; color: #000; }
+        .det-conf { margin-left: auto; font-weight: 700; font-size: 1.1em; }
+        .venomous .det-conf { color: #ef4444; }
+        .non_venomous .det-conf { color: #22c55e; }
+
+        .no-det { text-align: center; padding: 30px; color: #666; }
+
+        .spinner {
+            display: none; text-align: center; padding: 40px;
+        }
+        .spinner.active { display: block; }
+        .spinner-ring {
+            width: 40px; height: 40px; border: 4px solid #222;
+            border-top-color: #7c3aed; border-radius: 50%;
+            animation: spin 0.8s linear infinite; margin: 0 auto 12px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .alert-banner {
+            display: none; padding: 16px 24px; border-radius: 14px;
+            margin-top: 16px; font-weight: 700; font-size: 1.1em;
+            text-align: center; animation: pulse 1.5s infinite;
+        }
+        .alert-banner.danger {
+            display: block; background: rgba(239,68,68,0.15);
+            border: 2px solid #ef4444; color: #ef4444;
+        }
+        .alert-banner.safe {
+            display: block; background: rgba(34,197,94,0.1);
+            border: 2px solid #22c55e; color: #22c55e;
+        }
+        @keyframes pulse {
+            0%,100% { opacity: 1; } 50% { opacity: 0.7; }
+        }
+        .footer { text-align: center; padding: 40px; color: #444; font-size: 0.8em; }
+    </style>
+</head>
+<body>
+    <div class="bg-glow"></div>
+    <header>
+        <h1>🐍 Snake Detector</h1>
+        <p>Upload a photo to detect venomous & non-venomous snakes</p>
+    </header>
+
+    <div class="container">
+        <div class="upload-zone" id="uploadZone">
+            <div class="upload-icon">📷</div>
+            <div class="upload-text">
+                Drag & drop an image here or <span>click to browse</span>
+            </div>
+        </div>
+        <input type="file" id="fileInput" accept="image/*">
+
+        <div class="spinner" id="spinner">
+            <div class="spinner-ring"></div>
+            <div>Analyzing image...</div>
+        </div>
+
+        <div id="alertBanner" class="alert-banner"></div>
+
+        <div class="result-area" id="resultArea">
+            <div class="canvas-wrap">
+                <canvas id="canvas"></canvas>
+            </div>
+            <div class="det-list" id="detList">
+                <h3>Detections</h3>
+                <div id="detItems"></div>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer">BIO_MIMIC — Snake Detector Test Page</div>
+
+    <script>
+        const uploadZone = document.getElementById('uploadZone');
+        const fileInput = document.getElementById('fileInput');
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        const spinner = document.getElementById('spinner');
+        const resultArea = document.getElementById('resultArea');
+        const detItems = document.getElementById('detItems');
+        const alertBanner = document.getElementById('alertBanner');
+        const SERVER = 'http://localhost:5000';
+        
+        // Ensure we accept both images and videos
+        fileInput.setAttribute("accept", "image/*,video/*");
+
+        uploadZone.addEventListener('click', () => fileInput.click());
+        uploadZone.addEventListener('dragover', e => { e.preventDefault(); uploadZone.classList.add('dragover'); });
+        uploadZone.addEventListener('dragleave', () => uploadZone.classList.remove('dragover'));
+        uploadZone.addEventListener('drop', e => {
+            e.preventDefault(); uploadZone.classList.remove('dragover');
+            if (e.dataTransfer.files.length) handleFile(e.dataTransfer.files[0]);
+        });
+        fileInput.addEventListener('change', e => { if (e.target.files.length) handleFile(e.target.files[0]); });
+
+        function handleFile(file) {
+            resultArea.classList.remove('active');
+            alertBanner.style.display = 'none';
+            detItems.innerHTML = '';
+            
+            if (file.type.startsWith('video/')) {
+                // Handle Video Upload
+                const videoURL = URL.createObjectURL(file);
+                const video = document.createElement('video');
+                video.src = videoURL;
+                video.muted = true;
+                video.playsInline = true;
+                
+                video.onloadedmetadata = () => {
+                    spinner.classList.remove('active');
+                    resultArea.classList.add('active');
+                    video.play();
+                    processVideoLoop(video);
+                };
+            } else {
+                // Handle Image Upload
+                const reader = new FileReader();
+                reader.onload = e => {
+                    const img = new Image();
+                    img.onload = () => detectSnake(img, e.target.result);
+                    img.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        
+        let isProcessingFrame = false;
+
+        async function processVideoLoop(video) {
+            // Stop if video ended or paused
+            if (video.paused || video.ended) return;
+            
+            if (!isProcessingFrame) {
+                isProcessingFrame = true;
+                
+                // Draw current frame to a temporary canvas to get a base64 image
+                const tempCanvas = document.createElement('canvas');
+                tempCanvas.width = video.videoWidth;
+                tempCanvas.height = video.videoHeight;
+                tempCanvas.getContext('2d').drawImage(video, 0, 0);
+                
+                // Keep quality lower for faster video processing
+                const dataUrl = tempCanvas.toDataURL('image/jpeg', 0.6);
+                
+                try {
+                    const res = await fetch(`${SERVER}/detect`, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ image: dataUrl })
+                    });
+                    const data = await res.json();
+                    drawResults(video, data.detections);
+                } catch (err) {
+                    console.error('Detection error:', err);
+                }
+                
+                isProcessingFrame = false;
+            }
+            
+            // Wait for next frame
+            requestAnimationFrame(() => processVideoLoop(video));
+        }
+
+        async function detectSnake(img, dataUrl) {
+            spinner.classList.add('active');
+            try {
+                const res = await fetch(`${SERVER}/detect`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: dataUrl })
+                });
+                const data = await res.json();
+                drawResults(img, data.detections);
+            } catch (err) {
+                alert('Cannot connect to server!\n\nCheck if server.py is running.');
+            }
+            spinner.classList.remove('active');
+        }
+
+        function drawResults(source, detections) {
+            const srcWidth = source.width || source.videoWidth;
+            const srcHeight = source.height || source.videoHeight;
+            const scale = Math.min(860 / srcWidth, 600 / srcHeight, 1);
+            canvas.width = srcWidth * scale;
+            canvas.height = srcHeight * scale;
+            ctx.drawImage(source, 0, 0, canvas.width, canvas.height);
+
+            let hasVenomous = false;
+            detItems.innerHTML = '';
+
+            detections.forEach(d => {
+                const x1 = d.x1 * scale, y1 = d.y1 * scale;
+                const x2 = d.x2 * scale, y2 = d.y2 * scale;
+                const isVen = d.name.includes('venomous') && !d.name.includes('non');
+                if (isVen) hasVenomous = true;
+
+                const color = isVen ? '#ef4444' : '#22c55e';
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 3;
+                ctx.strokeRect(x1, y1, x2 - x1, y2 - y1);
+
+                const label = `${d.name} ${Math.round(d.confidence * 100)}%`;
+                ctx.font = 'bold 14px Inter, sans-serif';
+                const tw = ctx.measureText(label).width + 12;
+                ctx.fillStyle = color;
+                ctx.fillRect(x1, y1 - 22, tw, 22);
+                ctx.fillStyle = isVen ? '#fff' : '#000';
+                ctx.fillText(label, x1 + 6, y1 - 6);
+
+                const cls = isVen ? 'venomous' : 'non_venomous';
+                detItems.innerHTML += `
+                    <div class="det-item ${cls}">
+                        <div class="det-badge">${isVen ? '⚠ VENOMOUS' : '✓ SAFE'}</div>
+                        <div>${d.name}</div>
+                        <div class="det-conf">${Math.round(d.confidence * 100)}%</div>
+                    </div>`;
+            });
+
+            if (detections.length === 0) {
+                detItems.innerHTML = '<div class="no-det">No snakes detected</div>';
+                alertBanner.style.display = 'none';
+            } else if (hasVenomous) {
+                alertBanner.className = 'alert-banner danger';
+                alertBanner.textContent = '⚠️ VENOMOUS SNAKE DETECTED — STAY AWAY!';
+                alertBanner.style.display = 'block';
+            } else {
+                alertBanner.className = 'alert-banner safe';
+                alertBanner.textContent = '✅ Non-venomous snake detected — Safe';
+                alertBanner.style.display = 'block';
+            }
+            if (!resultArea.classList.contains('active')) {
+                resultArea.classList.add('active');
+            }
+        }
+    </script>
+</body>
+</html>

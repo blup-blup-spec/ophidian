@@ -1,0 +1,32 @@
+version: "3.8"
+
+services:
+  snake-detector:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    container_name: snake-detector
+    restart: unless-stopped
+    
+    # Give access to the camera device
+    devices:
+      - /dev/video0:/dev/video0
+    
+    # Memory limits for Pi 4 (2GB)
+    mem_limit: 1500m
+    memswap_limit: 2000m
+    
+    # Use all 4 CPU cores
+    cpus: 4
+    
+    # Environment
+    environment:
+      - OMP_NUM_THREADS=4
+      - NCNN_THREADS=4
+    
+    # Mount model files (so you can update without rebuilding)
+    volumes:
+      - ../models:/app/models:ro
+    
+    # Default: headless mode for maximum FPS
+    command: ["--model-dir", "/app/models", "--headless", "--camera", "0", "--size", "320", "--conf", "0.45"]
